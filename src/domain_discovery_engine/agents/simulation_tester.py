@@ -96,7 +96,7 @@ class LLMSimulationTester:
         self.fallback = fallback or RuleBasedSimulationTester()
 
     def run(self, domain_model: DomainModel, memory: ProjectMemory) -> SimulationResult:
-        system_prompt = load_prompt("simulation_tester.md")
+        system_prompt = load_prompt("internal", "simulation_tester.md")
         user_prompt = (
             "Return JSON only matching the SimulationResult schema.\n"
             "Use finding_type values such as missing_info, contradiction, risk.\n"

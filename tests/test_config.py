@@ -21,3 +21,9 @@ def test_env_overrides_analyzer_mode(monkeypatch) -> None:
     monkeypatch.setenv("DDE_ANALYZER_MODE", "llm")
     config = AppConfig()
     assert config.analyzer_mode == "llm"
+
+
+def test_user_locale_defaults_to_ja_jp(monkeypatch) -> None:
+    monkeypatch.delenv("DDE_USER_LOCALE", raising=False)
+    config = AppConfig()
+    assert config.user_locale == "ja-JP"

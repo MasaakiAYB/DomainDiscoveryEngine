@@ -160,7 +160,7 @@ class LLMDomainModelBuilder:
         self.fallback = fallback or RuleBasedDomainModelBuilder()
 
     def build(self, memory: ProjectMemory) -> DomainModel:
-        system_prompt = load_prompt("domain_model_builder.md")
+        system_prompt = load_prompt("internal", "domain_model_builder.md")
         user_prompt = (
             "Return JSON only matching the DomainModel schema.\n"
             f"Project memory:\n{memory.model_dump_json(indent=2)}\n"

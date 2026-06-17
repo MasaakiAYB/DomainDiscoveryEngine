@@ -50,3 +50,4 @@ By default, project data is stored under:
 
 If `DDE_DATA_DIR` is set, DDE uses that path instead. The JSON store creates parent directories when saving project memory.
 Use `DDE_ANALYZER_MODE=rule_based` or `DDE_ANALYZER_MODE=llm` to switch the workflow implementation.
+Use `DDE_USER_LOCALE=ja-JP` to control the user-facing output language. The current default is Japanese.

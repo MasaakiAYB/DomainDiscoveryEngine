@@ -134,7 +134,7 @@ class LLMDialogueAnalyzer:
         self.fallback = fallback or RuleBasedDialogueAnalyzer()
 
     def analyze(self, message: str, memory: ProjectMemory) -> DialogueExtraction:
-        system_prompt = load_prompt("dialogue_analyzer.md")
+        system_prompt = load_prompt("internal", "dialogue_analyzer.md")
         user_prompt = (
             "Return JSON only.\n"
             "Schema keys: goals, concepts, tasks, constraints, assumptions, unknowns.\n"

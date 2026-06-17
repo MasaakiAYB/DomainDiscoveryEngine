@@ -57,6 +57,14 @@ docker compose run --rm dde
 Project data is stored under `.data/projects` by default. Set `DDE_DATA_DIR` to change the storage root.
 Set `DDE_ANALYZER_MODE=rule_based` or `DDE_ANALYZER_MODE=llm` to switch between implementations.
 
+## Prompt And Language Policy
+
+- The target user language is Japanese.
+- Internal prompts use English for technical stability in domain modeling and simulation tasks.
+- User-facing questions and summaries are Japanese by default.
+- User-provided business terms are preserved in their original language.
+- `DDE_USER_LOCALE=ja-JP` controls the user-facing language.
+
 ## Design Docs
 
 - Detailed design overview: [design/README.md](design/README.md)

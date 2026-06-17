@@ -45,7 +45,9 @@ class DiscoveryWorkflow:
             LLMSimulationTester(provider=provider) if use_llm else RuleBasedSimulationTester()
         )
         self.question_generator = question_generator or (
-            LLMQuestionGenerator(provider=provider) if use_llm else RuleBasedQuestionGenerator()
+            LLMQuestionGenerator(provider=provider, config=self.config)
+            if use_llm
+            else RuleBasedQuestionGenerator()
         )
 
     def run_turn(self, project_memory: ProjectMemory, user_message: str) -> DiscoveryState:

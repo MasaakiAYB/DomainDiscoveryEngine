@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from domain_discovery_engine.core.config import AppConfig
 from domain_discovery_engine.llm.provider import LLMProvider
 from domain_discovery_engine.schemas.domain_model import DomainModel
 from domain_discovery_engine.schemas.memory import MemoryItem, MemorySource, ProjectMemory
@@ -88,9 +89,11 @@ class LLMQuestionGenerator:
         self,
         provider: LLMProvider,
         fallback: RuleBasedQuestionGenerator | None = None,
+        config: AppConfig | None = None,
     ) -> None:
         self.provider = provider
         self.fallback = fallback or RuleBasedQuestionGenerator()
+        self.config = config or AppConfig()
 
     def generate(
         self,
@@ -98,10 +101,11 @@ class LLMQuestionGenerator:
         domain_model: DomainModel,
         simulation_result: SimulationResult | None = None,
     ) -> QuestionSet:
-        system_prompt = load_prompt("question_generator.md")
+        system_prompt = load_prompt("user_facing", "question_generator.md")
         simulation_json = simulation_result.model_dump_json(indent=2) if simulation_result else "null"
         user_prompt = (
             "Return JSON only matching the QuestionSet schema.\n"
+            f"Generate the selected question in the user locale `{self.config.user_locale}`.\n"
             "The selected question must be business-friendly and explain why the information is needed.\n"
             f"Project memory:\n{memory.model_dump_json(indent=2)}\n"
             f"Domain model:\n{domain_model.model_dump_json(indent=2)}\n"
