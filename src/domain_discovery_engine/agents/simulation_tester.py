@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from domain_discovery_engine.llm.provider import LLMProvider
 from domain_discovery_engine.schemas.domain_model import DomainModel
 from domain_discovery_engine.schemas.memory import (
     MemoryItem,
@@ -10,9 +11,11 @@ from domain_discovery_engine.schemas.memory import (
 )
 from domain_discovery_engine.schemas.simulation import SimulationFinding, SimulationResult
 from domain_discovery_engine.utils.ids import new_id
+from domain_discovery_engine.utils.json import extract_json_object
+from domain_discovery_engine.utils.prompts import load_prompt
 
 
-class SimulationTester:
+class RuleBasedSimulationTester:
     def run(self, domain_model: DomainModel, memory: ProjectMemory) -> SimulationResult:
         result = SimulationResult()
         known_texts = {
@@ -26,7 +29,7 @@ class SimulationTester:
         for task in domain_model.tasks:
             task_name = task.name
             if any(word in task_name for word in ("探す", "検索", "search")) and not self._contains_any(
-                known_texts, ("検索条件", "検索キー", "予約に必要な入力項目", "条件")
+                known_texts, ("検索条件", "検索キー")
             ):
                 result.findings.append(self._finding("search", task_name, "検索条件が未定義"))
                 result.unknowns.append(self._unknown("検索条件が未定義", task_name))
@@ -50,10 +53,8 @@ class SimulationTester:
                     )
                     result.unknowns.append(self._unknown("重複予約防止ルールが未定義", task_name))
                     known_texts.add("重複予約防止ルールが未定義")
-                if not self._contains_any(known_texts, ("入力項目", "設備名", "利用者", "開始時刻", "終了時刻")):
-                    result.findings.append(
-                        self._finding("reservation-input", task_name, "予約に必要な入力項目")
-                    )
+                if "予約に必要な入力項目" not in known_texts:
+                    result.findings.append(self._finding("reservation-input", task_name, "予約に必要な入力項目"))
                     result.unknowns.append(self._unknown("予約に必要な入力項目", task_name))
                     known_texts.add("予約に必要な入力項目")
 
@@ -83,3 +84,32 @@ class SimulationTester:
             related_task=task_name,
             generated_unknown=unknown,
         )
+
+
+class LLMSimulationTester:
+    def __init__(
+        self,
+        provider: LLMProvider,
+        fallback: RuleBasedSimulationTester | None = None,
+    ) -> None:
+        self.provider = provider
+        self.fallback = fallback or RuleBasedSimulationTester()
+
+    def run(self, domain_model: DomainModel, memory: ProjectMemory) -> SimulationResult:
+        system_prompt = load_prompt("simulation_tester.md")
+        user_prompt = (
+            "Return JSON only matching the SimulationResult schema.\n"
+            "Use finding_type values such as missing_info, contradiction, risk.\n"
+            f"Domain model:\n{domain_model.model_dump_json(indent=2)}\n"
+            f"Project memory:\n{memory.model_dump_json(indent=2)}\n"
+        )
+        try:
+            payload = extract_json_object(self.provider.invoke(system_prompt, user_prompt))
+            if not isinstance(payload, dict):
+                raise ValueError("Simulation tester response must be a JSON object")
+            return SimulationResult.model_validate(payload)
+        except Exception:
+            return self.fallback.run(domain_model, memory)
+
+
+SimulationTester = RuleBasedSimulationTester

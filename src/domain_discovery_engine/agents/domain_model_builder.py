@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from domain_discovery_engine.llm.provider import LLMProvider
 from domain_discovery_engine.schemas.domain_model import (
     DomainConcept,
     DomainConstraint,
@@ -9,9 +10,11 @@ from domain_discovery_engine.schemas.domain_model import (
     DomainTask,
 )
 from domain_discovery_engine.schemas.memory import MemoryItem, MemoryStatus, ProjectMemory
+from domain_discovery_engine.utils.json import extract_json_object
+from domain_discovery_engine.utils.prompts import load_prompt
 
 
-class DomainModelBuilder:
+class RuleBasedDomainModelBuilder:
     def build(self, memory: ProjectMemory) -> DomainModel:
         model = DomainModel(
             project_id=memory.project_id,
@@ -145,3 +148,32 @@ class DomainModelBuilder:
         for concept in model.concepts:
             if not concept.description and concept.name in descriptions:
                 concept.description = descriptions[concept.name]
+
+
+class LLMDomainModelBuilder:
+    def __init__(
+        self,
+        provider: LLMProvider,
+        fallback: RuleBasedDomainModelBuilder | None = None,
+    ) -> None:
+        self.provider = provider
+        self.fallback = fallback or RuleBasedDomainModelBuilder()
+
+    def build(self, memory: ProjectMemory) -> DomainModel:
+        system_prompt = load_prompt("domain_model_builder.md")
+        user_prompt = (
+            "Return JSON only matching the DomainModel schema.\n"
+            f"Project memory:\n{memory.model_dump_json(indent=2)}\n"
+        )
+        try:
+            payload = extract_json_object(self.provider.invoke(system_prompt, user_prompt))
+            if not isinstance(payload, dict):
+                raise ValueError("Domain model builder response must be a JSON object")
+            payload.setdefault("project_id", memory.project_id)
+            payload.setdefault("title", memory.title)
+            return DomainModel.model_validate(payload)
+        except Exception:
+            return self.fallback.build(memory)
+
+
+DomainModelBuilder = RuleBasedDomainModelBuilder

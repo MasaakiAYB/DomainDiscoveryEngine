@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from domain_discovery_engine.llm.provider import LLMProvider
 from domain_discovery_engine.schemas.domain_model import DomainModel
 from domain_discovery_engine.schemas.memory import MemoryItem, MemorySource, ProjectMemory
 from domain_discovery_engine.schemas.question import Question, QuestionPriority, QuestionSet
 from domain_discovery_engine.schemas.simulation import SimulationResult
 from domain_discovery_engine.utils.ids import new_id
+from domain_discovery_engine.utils.json import extract_json_object
+from domain_discovery_engine.utils.prompts import load_prompt
 
 
-class QuestionGenerator:
+class RuleBasedQuestionGenerator:
     def generate(
         self,
         memory: ProjectMemory,
@@ -78,3 +81,39 @@ class QuestionGenerator:
             QuestionPriority.LOW: 2,
         }
         return sorted(candidates, key=lambda question: (order[question.priority], question.text))[0]
+
+
+class LLMQuestionGenerator:
+    def __init__(
+        self,
+        provider: LLMProvider,
+        fallback: RuleBasedQuestionGenerator | None = None,
+    ) -> None:
+        self.provider = provider
+        self.fallback = fallback or RuleBasedQuestionGenerator()
+
+    def generate(
+        self,
+        memory: ProjectMemory,
+        domain_model: DomainModel,
+        simulation_result: SimulationResult | None = None,
+    ) -> QuestionSet:
+        system_prompt = load_prompt("question_generator.md")
+        simulation_json = simulation_result.model_dump_json(indent=2) if simulation_result else "null"
+        user_prompt = (
+            "Return JSON only matching the QuestionSet schema.\n"
+            "The selected question must be business-friendly and explain why the information is needed.\n"
+            f"Project memory:\n{memory.model_dump_json(indent=2)}\n"
+            f"Domain model:\n{domain_model.model_dump_json(indent=2)}\n"
+            f"Simulation result:\n{simulation_json}\n"
+        )
+        try:
+            payload = extract_json_object(self.provider.invoke(system_prompt, user_prompt))
+            if not isinstance(payload, dict):
+                raise ValueError("Question generator response must be a JSON object")
+            return QuestionSet.model_validate(payload)
+        except Exception:
+            return self.fallback.generate(memory, domain_model, simulation_result)
+
+
+QuestionGenerator = RuleBasedQuestionGenerator
