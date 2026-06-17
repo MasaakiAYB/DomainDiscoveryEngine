@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "domain-discovery-engine"
 version = "0.1.0"
 description = "CLI-first Domain Discovery Engine MVP"
-readme = "design/README.md"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.7,<3",

@@ -1,0 +1,27 @@
+title: 設備予約管理ツール
+purpose:
+  - 部署メンバーが共通設備を予約し、ダブルブッキングを防ぐ
+concepts:
+  - name: 設備
+    description: 予約対象となる共通設備
+  - name: 予約
+    description: 利用者が設備を特定時間帯に利用する予定
+  - name: 利用者
+    description: 設備を予約・利用する部署メンバー
+relations:
+  - subject: 利用者
+    predicate: 作成する
+    object: 予約
+  - subject: 予約
+    predicate: 対象にする
+    object: 設備
+tasks:
+  - name: 設備を予約する
+  - name: 予約状況を確認する
+  - name: ダブルブッキングを防ぐ
+constraints:
+  - name: 同じ設備は同じ時間帯に重複予約できない
+unresolved_questions:
+  - 予約に必要な入力項目
+  - 設備が故障中の場合の扱い
+  - 予約変更・キャンセルの権限

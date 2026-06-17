@@ -1,0 +1,29 @@
+goals:
+  - label: 部署メンバーが共通設備を予約できるようにする
+    status: candidate
+    source: user
+  - label: ダブルブッキングを防ぐ
+    status: candidate
+    source: user
+concepts:
+  - label: 設備
+    status: candidate
+    source: user
+  - label: 予約
+    status: candidate
+    source: ai_inferred
+  - label: 利用者
+    status: candidate
+    source: ai_inferred
+tasks:
+  - label: 設備を予約する
+    status: candidate
+    source: user
+constraints:
+  - label: 同じ設備は同じ時間帯に重複予約できない
+    status: candidate
+    source: user
+unknowns:
+  - label: 予約に必要な入力項目
+    status: unresolved
+    source: simulation

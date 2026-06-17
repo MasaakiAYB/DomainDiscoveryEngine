@@ -1,0 +1,25 @@
+goals:
+  - label: 過去の似た実験を探せるようにする
+    status: candidate
+    source: user
+concepts:
+  - label: 実験
+    status: candidate
+    source: ai_inferred
+  - label: 実験条件
+    status: candidate
+    source: user
+  - label: 実験結果
+    status: candidate
+    source: user
+tasks:
+  - label: 実験条件と結果を記録する
+    status: candidate
+    source: user
+  - label: 過去の似た実験を探す
+    status: candidate
+    source: user
+unknowns:
+  - label: 似た実験の判定基準
+    status: unresolved
+    source: simulation

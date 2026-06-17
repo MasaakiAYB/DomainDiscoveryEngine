@@ -1,0 +1,9 @@
+services:
+  dde:
+    build: .
+    environment:
+      - DDE_DATA_DIR=/app/.data/projects
+    volumes:
+      - ./.data:/app/.data
+    stdin_open: true
+    tty: true
