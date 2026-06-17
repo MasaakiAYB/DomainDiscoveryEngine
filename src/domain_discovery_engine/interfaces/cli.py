@@ -13,11 +13,19 @@ def main() -> None:
     store = JsonProjectMemoryStore(base_dir=Path(config.data_dir))
     workflow = DiscoveryWorkflow()
 
-    project_id = input("Project ID: ").strip() or "default"
+    try:
+        project_id = input("Project ID: ").strip() or "default"
+    except EOFError:
+        print()
+        return
     memory = store.load(project_id) or ProjectMemory(project_id=project_id)
 
     while True:
-        user_message = input("You> ").strip()
+        try:
+            user_message = input("You> ").strip()
+        except EOFError:
+            print()
+            break
         if user_message == "/exit":
             break
         if not user_message:
@@ -52,3 +60,7 @@ def _print_state(state) -> None:
         if question.examples:
             print(f"  例: {', '.join(question.examples)}")
     print()
+
+
+if __name__ == "__main__":
+    main()
