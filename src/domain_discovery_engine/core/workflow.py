@@ -1,28 +1,52 @@
 from __future__ import annotations
 
-from domain_discovery_engine.agents.dialogue_analyzer import DialogueAnalyzer
-from domain_discovery_engine.agents.domain_model_builder import DomainModelBuilder
+from domain_discovery_engine.agents.dialogue_analyzer import LLMDialogueAnalyzer, RuleBasedDialogueAnalyzer
+from domain_discovery_engine.agents.domain_model_builder import (
+    LLMDomainModelBuilder,
+    RuleBasedDomainModelBuilder,
+)
 from domain_discovery_engine.agents.memory_updater import MemoryUpdater
-from domain_discovery_engine.agents.question_generator import QuestionGenerator
-from domain_discovery_engine.agents.simulation_tester import SimulationTester
+from domain_discovery_engine.agents.question_generator import (
+    LLMQuestionGenerator,
+    RuleBasedQuestionGenerator,
+)
+from domain_discovery_engine.agents.simulation_tester import (
+    LLMSimulationTester,
+    RuleBasedSimulationTester,
+)
+from domain_discovery_engine.core.config import AppConfig
 from domain_discovery_engine.core.state import DiscoveryState
+from domain_discovery_engine.llm.provider import LLMProvider
 from domain_discovery_engine.schemas.memory import ProjectMemory
 
 
 class DiscoveryWorkflow:
     def __init__(
         self,
-        dialogue_analyzer: DialogueAnalyzer | None = None,
+        dialogue_analyzer=None,
         memory_updater: MemoryUpdater | None = None,
-        domain_model_builder: DomainModelBuilder | None = None,
-        simulation_tester: SimulationTester | None = None,
-        question_generator: QuestionGenerator | None = None,
+        domain_model_builder=None,
+        simulation_tester=None,
+        question_generator=None,
+        llm_provider: LLMProvider | None = None,
+        config: AppConfig | None = None,
     ) -> None:
-        self.dialogue_analyzer = dialogue_analyzer or DialogueAnalyzer()
+        self.config = config or AppConfig()
+        provider = llm_provider or LLMProvider(self.config)
+        use_llm = self.config.analyzer_mode == "llm"
+        self.dialogue_analyzer = dialogue_analyzer or (
+            LLMDialogueAnalyzer(provider=provider) if use_llm else RuleBasedDialogueAnalyzer()
+        )
         self.memory_updater = memory_updater or MemoryUpdater()
-        self.domain_model_builder = domain_model_builder or DomainModelBuilder()
-        self.simulation_tester = simulation_tester or SimulationTester()
-        self.question_generator = question_generator or QuestionGenerator()
+        self.domain_model_builder = domain_model_builder or (
+            LLMDomainModelBuilder(provider=provider) if use_llm else RuleBasedDomainModelBuilder()
+        )
+        self.simulation_tester = simulation_tester or (
+            LLMSimulationTester(provider=provider) if use_llm else RuleBasedSimulationTester()
+        )
+        self.question_generator = question_generator or (
+            LLMQuestionGenerator(provider=provider) if use_llm else RuleBasedQuestionGenerator()
+        )
 
     def run_turn(self, project_memory: ProjectMemory, user_message: str) -> DiscoveryState:
         extraction = self.dialogue_analyzer.analyze(user_message, project_memory)

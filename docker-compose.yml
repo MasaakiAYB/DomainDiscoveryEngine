@@ -1,6 +1,7 @@
 services:
   dde:
     build: .
+    user: "${UID:-1000}:${GID:-1000}"
     environment:
       - DDE_DATA_DIR=/app/.data/projects
     volumes:

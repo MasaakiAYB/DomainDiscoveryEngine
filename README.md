@@ -33,6 +33,12 @@ python3 -m pip install -e .[dev]
 python -m domain_discovery_engine.interfaces.cli
 ```
 
+LLM mode:
+
+```bash
+DDE_ANALYZER_MODE=llm python -m domain_discovery_engine.interfaces.cli
+```
+
 ## Test
 
 ```bash
@@ -49,6 +55,7 @@ docker compose run --rm dde
 ## Data Storage
 
 Project data is stored under `.data/projects` by default. Set `DDE_DATA_DIR` to change the storage root.
+Set `DDE_ANALYZER_MODE=rule_based` or `DDE_ANALYZER_MODE=llm` to switch between implementations.
 
 ## Design Docs
 
