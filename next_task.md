@@ -1,247 +1,420 @@
-# NEXT TASK (Phase 2)
+# NEXT TASK: Prompt Language Policy and Japanese User Experience
 
 ## Objective
 
-Move DomainDiscoveryEngine from a rule-based MVP to an LLM-assisted domain discovery system while preserving the existing architecture.
+Update DomainDiscoveryEngine so that it uses English prompts for internal LLM reasoning while preserving a Japanese user experience.
 
-The current implementation successfully demonstrates:
+The target users are Japanese business users. They will describe their business ideas in Japanese and expect clarification questions and summaries in Japanese.
 
-- ProjectMemory
-- DomainModel generation
-- Simulation / Break Test
-- Question generation
+However, internal LLM prompts for domain modeling, extraction, and simulation should remain in English because these prompts use software engineering and domain modeling concepts such as:
 
-The next goal is to introduce an LLM abstraction layer and migrate the existing agents to use an Azure OpenAI based implementation.
+- Domain Model
+- Concept
+- Task
+- Constraint
+- Assumption
+- Decision
+- Unknown
+- Simulation Test
+- Break Test
+- Acceptance Criteria
 
-Use the company OpenAI environment pattern demonstrated in `llm_match_catalog_item.py`.
+The system must clearly separate:
 
-Reference:
-- AzureChatOpenAI
-- langchain_core.messages
-- dotenv based configuration
-- Thread-local LLM instance reuse pattern where appropriate
+1. Internal prompt language
+2. Schema/internal data structure language
+3. User-facing output language
 
-Do NOT redesign the architecture.
+Do not redesign the DDE architecture.
 
 ---
 
-# TASK-12: Introduce LLM Provider Layer
+## Background
 
-## Goal
+The current implementation already has:
 
-Create a reusable LLM client abstraction.
+- Rule-based and LLM modes
+- Prompt externalization
+- AzureChatOpenAI based LLMProvider
+- Docker support
+- ProjectMemory
+- DomainModel
+- SimulationTester
+- QuestionGenerator
 
-## Files
+The next step is to define and enforce the language policy.
 
-Create:
+The company OpenAI environment should continue to use the existing AzureChatOpenAI implementation style already introduced in the project, consistent with the provided internal example.
 
-- src/domain_discovery_engine/llm/provider.py
+---
 
-Create:
+## Language Policy
+
+### 1. Internal schemas must stay English
+
+Keep schema field names and class names in English.
+
+Examples:
 
 ```python
-class LLMProvider:
-    def invoke(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-    ) -> str:
-        ...
+ProjectMemory
+MemoryItem
+DomainModel
+Concept
+Task
+Constraint
+Assumption
+Decision
+Unknown
+SimulationResult
+ClarifyingQuestion
 ```
 
-Implementation requirements:
+Do not translate schema fields into Japanese.
 
-- Use AzureChatOpenAI
-- Use environment variables
-- Use dotenv
-- Support model configuration
-- Support temperature configuration
-- Support reasoning effort configuration if available
+Bad:
 
-Follow the implementation style used in the provided company example.
+```python
+class 業務概念:
+    ...
+```
 
----
+Good:
 
-# TASK-13: Prompt Externalization
-
-## Goal
-
-Move agent prompts into dedicated prompt files.
-
-## Files
-
-Create:
-
-- prompts/dialogue_analyzer.md
-- prompts/domain_model_builder.md
-- prompts/simulation_tester.md
-- prompts/question_generator.md
-
-Requirements:
-
-- No prompts hardcoded in agent implementations
-- Prompt files loaded dynamically
-- Missing prompt file must raise explicit exception
+```python
+class Concept:
+    ...
+```
 
 ---
 
-# TASK-14: LLM Dialogue Analyzer
+### 2. Internal prompts should be English by default
 
-## Goal
+The following prompts should remain English:
 
-Replace keyword extraction with structured LLM extraction.
+- dialogue_analyzer.md
+- domain_model_builder.md
+- simulation_tester.md
 
-## Output Schema
+Reason:
 
-Return:
-
-- goals
-- concepts
-- tasks
-- constraints
-- assumptions
-- unknowns
-
-Requirements:
-
-- Output must be JSON
-- Validate with existing schema layer
-- Fallback gracefully when parsing fails
-
-Do not remove current rule-based implementation.
-
-Rename current implementation:
-
-- RuleBasedDialogueAnalyzer
-
-Create:
-
-- LLMDialogueAnalyzer
+These agents operate on structured concepts used in software engineering and domain modeling. English prompts are expected to be more stable for these internal tasks.
 
 ---
 
-# TASK-15: LLM Domain Model Builder
+### 3. User-facing prompts should produce Japanese
 
-## Goal
+The following prompts must explicitly instruct the LLM to produce Japanese output:
 
-Generate domain models through LLM reasoning.
+- question_generator.md
+- response_composer.md, if implemented
 
-Requirements:
+The generated clarification questions must be natural Japanese.
 
-Input:
+Bad:
 
-- ProjectMemory
+```text
+Please define the similarity criteria.
+```
 
-Output:
+Good:
 
-- DomainModel
-
-Preserve existing schema contracts.
-
-Do not modify DomainModel structure.
-
----
-
-# TASK-16: LLM Simulation Tester
-
-## Goal
-
-Use an LLM to identify:
-
-- missing concepts
-- missing tasks
-- missing constraints
-- workflow inconsistencies
-
-Output:
-
-SimulationResult
-
-Existing schema must remain unchanged.
+```text
+過去の実験を探すとき、何が近いものを「似ている」と判断しますか？
+例: 試料、実験条件、測定値、目的、担当者など
+```
 
 ---
 
-# TASK-17: LLM Question Generator
+### 4. User-provided domain labels must preserve original Japanese
 
-## Goal
+If the user says:
 
-Generate user-facing clarification questions.
+```text
+実験条件と結果を記録したい
+```
 
-Requirements:
+The extracted concepts should preserve Japanese labels:
 
-Questions must:
+```json
+{
+  "concepts": [
+    {
+      "label": "実験条件"
+    },
+    {
+      "label": "実験結果"
+    }
+  ]
+}
+```
 
-- be specific
-- explain why the information is needed
-- be answerable by business users
+Do not translate domain labels to English unless explicitly requested.
 
-Bad example:
+Bad:
 
-"Please provide specifications."
+```json
+{
+  "label": "experiment condition"
+}
+```
 
-Good example:
+Good:
 
-"When searching past experiments, which attributes should define similarity? (sample, condition, operator, date, etc.)"
+```json
+{
+  "label": "実験条件"
+}
+```
 
 ---
 
-# TASK-18: Analyzer Strategy Selection
+## TASK-25: Add Prompt Language Policy Document
 
-## Goal
+### Create
 
-Support runtime analyzer selection.
+```text
+docs/prompt_language_policy.md
+```
 
-Create configuration:
+### Content requirements
+
+Document the following:
+
+- Internal prompts are English by default
+- User-facing outputs are Japanese by default
+- Schema names remain English
+- Domain labels from user input must preserve original language
+- Japanese users are the primary target users
+- Future multilingual support should be handled via configuration, not by changing schemas
+
+---
+
+## TASK-26: Reorganize Prompt Directory
+
+### Goal
+
+Make prompt language separation explicit.
+
+### Required structure
+
+```text
+prompts/
+  internal/
+    dialogue_analyzer.md
+    domain_model_builder.md
+    simulation_tester.md
+
+  user_facing/
+    question_generator.md
+    response_composer.md
+```
+
+If `response_composer.md` is not implemented yet, create it as a placeholder prompt.
+
+### Requirements
+
+- Update prompt loading code to use the new paths
+- Tests must pass
+- Existing LLM mode must still work
+- Rule-based mode must still work
+
+---
+
+## TASK-27: Update Prompt Files
+
+### dialogue_analyzer.md
+
+Must be written in English.
+
+Must explicitly instruct:
+
+- Analyze Japanese or English user input
+- Extract structured items
+- Preserve user language for labels and descriptions
+- Return JSON only
+- Do not invent confirmed facts
+- Separate inferred assumptions from user-confirmed facts
+
+### domain_model_builder.md
+
+Must be written in English.
+
+Must explicitly instruct:
+
+- Build a domain model from ProjectMemory
+- Preserve Japanese business terms
+- Do not translate user-provided labels
+- Distinguish confirmed items from candidate items
+- Keep unresolved issues visible
+
+### simulation_tester.md
+
+Must be written in English.
+
+Must explicitly instruct:
+
+- Run business scenario simulation
+- Identify missing concepts, tasks, constraints, and relations
+- Generate unknowns, not final answers
+- Preserve Japanese labels
+
+### question_generator.md
+
+Can be written in Japanese or bilingual.
+
+Must explicitly instruct:
+
+- Generate Japanese clarification questions
+- Use polite but concise Japanese
+- Ask one high-priority question at a time unless multiple are strongly related
+- Explain briefly why the question matters
+- Include concrete examples where helpful
+- Avoid technical jargon such as "Domain Model", "Entity", "IR", "Schema"
+
+### response_composer.md
+
+If implemented, must explicitly instruct:
+
+- Summarize current understanding in Japanese
+- Show confirmed items and unresolved items separately
+- Avoid exposing internal implementation details
+- Do not mention LLM, schema, JSON, or internal prompts to the business user
+
+---
+
+## TASK-28: Add User Locale Configuration
+
+### Goal
+
+Make user-facing output language configurable.
+
+### Add environment variable
 
 ```env
-DDE_ANALYZER_MODE=rule_based
+DDE_USER_LOCALE=ja-JP
 ```
 
-Supported:
+Default:
 
-- rule_based
-- llm
+```text
+ja-JP
+```
 
-Workflow must select implementation automatically.
+### Update
+
+- `.env.example`
+- AppConfig
+- README
+- Docker documentation if present
+
+### Behavior
+
+If `DDE_USER_LOCALE=ja-JP`, clarification questions must be generated in Japanese.
+
+Future locales can be added later. Do not implement full multilingual support now.
 
 ---
 
-# TASK-19: Docker Validation
+## TASK-29: Add Tests for Japanese User Experience
 
-## Goal
+### Create or update tests
 
-Verify all functionality works in Docker.
+Add tests that verify:
 
-Acceptance Criteria
+1. Japanese user input remains Japanese in extracted labels
+2. QuestionGenerator returns Japanese text
+3. Internal schema fields remain English
+4. Prompt files exist in the new directory structure
+5. `DDE_USER_LOCALE` defaults to `ja-JP`
 
-docker compose up
+### Example test input
 
-starts successfully.
+```text
+実験条件と結果を記録して、過去の似た実験を探せるようにしたい
+```
 
-CLI works inside container.
+### Expected examples
 
-Prompt files are packaged correctly.
+Concept labels should include:
 
-Environment variables are loaded correctly.
+```text
+実験条件
+実験結果
+実験
+```
+
+Question should be Japanese, for example:
+
+```text
+過去の実験を探すとき、何を基準に「似ている」と判断しますか？
+```
+
+The exact wording does not need to match, but it must be Japanese and user-facing.
 
 ---
 
-# Acceptance Criteria
+## TASK-30: Update README
 
-All tests pass.
+Add a section:
 
-Existing functionality remains operational.
-
-A user can run:
-
-```bash
-docker compose up
+```markdown
+## Prompt and Language Policy
 ```
 
-and execute a complete discovery session using:
+Include:
 
-- Rule-based mode
-- LLM mode
+- The target user language is Japanese
+- Internal prompts use English for technical stability
+- User-facing questions and summaries are Japanese
+- User-provided business terms are preserved in their original language
+- `DDE_USER_LOCALE=ja-JP` controls user-facing language
 
-without code changes.
+---
 
+## Non-goals
+
+Do not implement:
+
+- IR generation
+- Application generation
+- Deployment engine beyond existing Docker runtime
+- Full multilingual UI
+- Translation of all internal prompts into Japanese
+- Schema renaming into Japanese
+- Database migration
+- Knowledge graph storage
+- Neo4j integration
+
+---
+
+## Acceptance Criteria
+
+The implementation is complete when:
+
+1. All tests pass
+2. Rule-based mode still works
+3. LLM mode still works
+4. Prompt directories are separated into `internal/` and `user_facing/`
+5. Japanese user input is preserved in labels
+6. Clarification questions are generated in Japanese by default
+7. README clearly explains the language policy
+8. `.env.example` includes `DDE_USER_LOCALE=ja-JP`
+9. Docker execution still works
+
+---
+
+## Recommended Codex Scope
+
+For the next Codex run, implement only:
+
+- TASK-25
+- TASK-26
+- TASK-27
+- TASK-28
+- TASK-29
+- TASK-30
+
+Do not start evaluation framework work yet.
+
+Focus only on prompt language policy and Japanese user experience.
