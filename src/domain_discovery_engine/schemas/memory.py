@@ -16,6 +16,11 @@ class MemoryItemType(str, Enum):
     UNKNOWN = "unknown"
     REJECTED = "rejected"
     CONTRADICTION = "contradiction"
+    BUSINESS_RULE = "business_rule"
+    DECISION_CRITERION = "decision_criterion"
+    PROCEDURE = "procedure"
+    INPUT_OUTPUT = "input_output"
+    EXECUTABLE_TASK_CANDIDATE = "executable_task_candidate"
 
 
 class MemoryStatus(str, Enum):
@@ -53,6 +58,11 @@ class ProjectMemory(BaseModel):
     constraints: list[MemoryItem] = Field(default_factory=list)
     assumptions: list[MemoryItem] = Field(default_factory=list)
     decisions: list[MemoryItem] = Field(default_factory=list)
+    business_rules: list[MemoryItem] = Field(default_factory=list)
+    decision_criteria: list[MemoryItem] = Field(default_factory=list)
+    procedures: list[MemoryItem] = Field(default_factory=list)
+    input_outputs: list[MemoryItem] = Field(default_factory=list)
+    executable_task_candidates: list[MemoryItem] = Field(default_factory=list)
     unknowns: list[MemoryItem] = Field(default_factory=list)
     rejected_items: list[MemoryItem] = Field(default_factory=list)
     contradictions: list[MemoryItem] = Field(default_factory=list)

@@ -9,3 +9,4 @@ Rules:
 - Keep unresolved issues visible
 - Exclude rejected items
 - Do not emit implementation details such as tables, APIs, or infrastructure
+- Preserve Japanese labels even when capability-related structures imply future automation

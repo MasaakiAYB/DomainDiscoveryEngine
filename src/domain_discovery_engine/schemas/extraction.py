@@ -13,6 +13,11 @@ class DialogueExtraction(BaseModel):
     constraints: list[MemoryItem] = Field(default_factory=list)
     assumptions: list[MemoryItem] = Field(default_factory=list)
     decisions: list[MemoryItem] = Field(default_factory=list)
+    business_rules: list[MemoryItem] = Field(default_factory=list)
+    decision_criteria: list[MemoryItem] = Field(default_factory=list)
+    procedures: list[MemoryItem] = Field(default_factory=list)
+    input_outputs: list[MemoryItem] = Field(default_factory=list)
+    executable_task_candidates: list[MemoryItem] = Field(default_factory=list)
     unknowns: list[MemoryItem] = Field(default_factory=list)
 
     def all_items(self) -> list[MemoryItem]:
@@ -24,5 +29,10 @@ class DialogueExtraction(BaseModel):
             *self.constraints,
             *self.assumptions,
             *self.decisions,
+            *self.business_rules,
+            *self.decision_criteria,
+            *self.procedures,
+            *self.input_outputs,
+            *self.executable_task_candidates,
             *self.unknowns,
         ]
