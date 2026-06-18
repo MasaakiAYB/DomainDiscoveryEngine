@@ -1,420 +1,809 @@
-# NEXT TASK: Prompt Language Policy and Japanese User Experience
+# NEXT TASK: Reposition DDE as a Business Capability Discovery Engine
 
 ## Objective
 
-Update DomainDiscoveryEngine so that it uses English prompts for internal LLM reasoning while preserving a Japanese user experience.
+Update DomainDiscoveryEngine to reflect the revised FY2026 direction.
 
-The target users are Japanese business users. They will describe their business ideas in Japanese and expect clarification questions and summaries in Japanese.
+The project should no longer be positioned only as a "domain model builder for system generation".
 
-However, internal LLM prompts for domain modeling, extraction, and simulation should remain in English because these prompts use software engineering and domain modeling concepts such as:
+It should be positioned as:
 
-- Domain Model
-- Concept
-- Task
-- Constraint
-- Assumption
-- Decision
-- Unknown
-- Simulation Test
-- Break Test
-- Acceptance Criteria
+> A generic engine that structures business knowledge from dialogue and converts it into executable task candidates.
 
-The system must clearly separate:
+The target of democratization is not "systems" but "business capabilities".
 
-1. Internal prompt language
-2. Schema/internal data structure language
-3. User-facing output language
+A business capability means reusable executable knowledge, including:
 
-Do not redesign the DDE architecture.
+- judgment criteria
+- business procedures
+- business rules
+- constraints
+- domain concepts
+- task decomposition
+- operational know-how
+
+The downstream forms may include:
+
+- Skill
+- MCP Tool
+- API
+- Workflow
+- Agent
+- UI
+
+However, this task must NOT implement downstream conversion yet.
+
+The scope of this task is to extend the current DDE model so it can represent business capability knowledge and executable task candidates.
 
 ---
 
-## Background
+## Current Project Context
 
-The current implementation already has:
+The current implementation already includes:
 
-- Rule-based and LLM modes
-- Prompt externalization
-- AzureChatOpenAI based LLMProvider
-- Docker support
 - ProjectMemory
 - DomainModel
+- DialogueAnalyzer
+- MemoryUpdater
+- DomainModelBuilder
 - SimulationTester
 - QuestionGenerator
+- Rule-based mode
+- LLM mode
+- Prompt externalization
+- Japanese user-facing behavior
+- Docker runtime
+- Azure OpenAI provider layer
 
-The next step is to define and enforce the language policy.
+Keep the current architecture.
 
-The company OpenAI environment should continue to use the existing AzureChatOpenAI implementation style already introduced in the project, consistent with the provided internal example.
+Do not rewrite the whole project.
+
+Extend it carefully.
 
 ---
 
-## Language Policy
+## Revised Positioning
 
-### 1. Internal schemas must stay English
+### Before
 
-Keep schema field names and class names in English.
+```text
+Dialogue
+↓
+Domain Model
+↓
+System IR
+↓
+Application Generation
+```
 
-Examples:
+### After
+
+```text
+Dialogue
+↓
+Business Knowledge Structuring
+↓
+Business Capability Model
+↓
+Executable Task Candidates
+↓
+Skill / MCP Tool / API / Workflow / Agent / UI
+```
+
+DDE is responsible for the first three steps:
+
+```text
+Dialogue
+↓
+Business Knowledge Structuring
+↓
+Business Capability Model
+↓
+Executable Task Candidates
+```
+
+DDE is NOT responsible for generating Skills, MCP tools, APIs, workflows, agents, or UIs in this phase.
+
+---
+
+## Key Conceptual Change
+
+The term "Domain" in DomainDiscoveryEngine should be interpreted broadly.
+
+It does not only mean an application domain model.
+
+It means the user's business domain knowledge and capability structure.
+
+The existing DomainModel can remain, but it should become one part of a broader BusinessCapabilityModel.
+
+---
+
+# TASK-31: Add Business Capability Model Schema
+
+## Goal
+
+Add schemas for representing reusable business capability knowledge.
+
+## Create
+
+```text
+src/domain_discovery_engine/schemas/business_capability.py
+```
+
+## Required classes
+
+Create Pydantic models for the following.
+
+### BusinessRule
+
+Represents a rule that constrains or governs business execution.
+
+Fields:
+
+```python
+id: str
+label: str
+description: str
+rule_type: str  # e.g. validation, eligibility, exception, priority, calculation, compliance
+status: str     # candidate, confirmed, rejected, unresolved
+source: str     # user, ai_inferred, simulation
+evidence: str | None
+confidence: float
+```
+
+### DecisionCriterion
+
+Represents a judgment criterion used by humans or agents.
+
+Fields:
+
+```python
+id: str
+label: str
+description: str
+criterion_type: str  # e.g. selection, evaluation, rejection, ranking, review
+status: str
+source: str
+evidence: str | None
+confidence: float
+```
+
+### BusinessProcedure
+
+Represents a business procedure or work step sequence.
+
+Fields:
+
+```python
+id: str
+label: str
+description: str
+steps: list[str]
+status: str
+source: str
+evidence: str | None
+confidence: float
+```
+
+### InputOutputSpec
+
+Represents required inputs and expected outputs.
+
+Fields:
+
+```python
+id: str
+label: str
+description: str
+input_items: list[str]
+output_items: list[str]
+status: str
+source: str
+evidence: str | None
+confidence: float
+```
+
+### ExecutableTaskCandidate
+
+Represents a candidate task that could later become a Skill, MCP Tool, API, Workflow, Agent, or UI.
+
+Fields:
+
+```python
+id: str
+label: str
+description: str
+task_type: str  # skill, mcp_tool, api, workflow, agent, ui, unknown
+required_inputs: list[str]
+expected_outputs: list[str]
+required_rules: list[str]
+required_decision_criteria: list[str]
+required_procedures: list[str]
+status: str
+source: str
+evidence: str | None
+confidence: float
+```
+
+### BusinessCapabilityModel
+
+Represents the full business capability structure.
+
+Fields:
+
+```python
+purpose: list[str]
+concepts: list[Any]  # reuse existing concept structure if available
+tasks: list[Any]     # reuse existing task structure if available
+rules: list[BusinessRule]
+decision_criteria: list[DecisionCriterion]
+procedures: list[BusinessProcedure]
+input_outputs: list[InputOutputSpec]
+constraints: list[Any]
+executable_task_candidates: list[ExecutableTaskCandidate]
+unknowns: list[Any]
+```
+
+## Requirements
+
+- Use existing enum/status conventions if they already exist.
+- Do not break existing DomainModel tests.
+- DomainModel must remain available.
+- BusinessCapabilityModel is an extension, not a replacement yet.
+
+---
+
+# TASK-32: Extend ProjectMemory
+
+## Goal
+
+ProjectMemory must be able to store business capability knowledge.
+
+## Update
+
+```text
+src/domain_discovery_engine/schemas/memory.py
+```
+
+Add memory sections:
+
+```python
+business_rules
+decision_criteria
+procedures
+input_outputs
+executable_task_candidates
+```
+
+Each should use the existing MemoryItem style if possible.
+
+## Requirements
+
+- Existing fields must remain unchanged.
+- Existing tests must continue to pass.
+- JSON serialization/deserialization must work.
+- Existing saved ProjectMemory files should still load if possible.
+
+---
+
+# TASK-33: Add Business Capability Builder
+
+## Goal
+
+Create a builder that transforms ProjectMemory into BusinessCapabilityModel.
+
+## Create
+
+```text
+src/domain_discovery_engine/agents/business_capability_builder.py
+```
+
+## Required behavior
+
+Input:
 
 ```python
 ProjectMemory
-MemoryItem
-DomainModel
-Concept
-Task
-Constraint
-Assumption
-Decision
-Unknown
-SimulationResult
-ClarifyingQuestion
 ```
 
-Do not translate schema fields into Japanese.
-
-Bad:
+Output:
 
 ```python
-class 業務概念:
-    ...
+BusinessCapabilityModel
 ```
 
-Good:
+The builder should collect:
+
+- goals -> purpose
+- concepts -> concepts
+- tasks -> tasks
+- constraints -> constraints
+- business_rules -> rules
+- decision_criteria -> decision_criteria
+- procedures -> procedures
+- input_outputs -> input_outputs
+- executable_task_candidates -> executable_task_candidates
+- unknowns -> unknowns
+
+## LLM mode
+
+If the current architecture supports LLM mode, add an LLM implementation.
+
+The prompt should be internal English.
+
+It must preserve Japanese business labels.
+
+## Rule-based mode
+
+Add a minimal rule-based implementation that maps ProjectMemory fields directly.
+
+---
+
+# TASK-34: Update Dialogue Analyzer Extraction Targets
+
+## Goal
+
+DialogueAnalyzer should extract business capability related information.
+
+## Update both rule-based and LLM analyzer outputs to include:
+
+- business_rules
+- decision_criteria
+- procedures
+- input_outputs
+- executable_task_candidates
+
+## Example Japanese input
+
+```text
+購買見積を評価するとき、単価だけでなく仕様一致、単位整合、過去実績との差分を見て判断したい。
+明らかに対象外の候補は除外し、判断が難しいものはレビュー対象にしたい。
+```
+
+Expected extracted items:
+
+```text
+BusinessRule:
+- 対象外候補は除外する
+- 判断が難しいものはレビュー対象にする
+
+DecisionCriterion:
+- 仕様一致
+- 単位整合
+- 過去実績との差分
+- 単価
+
+ExecutableTaskCandidate:
+- 見積候補を評価する
+- レビュー対象を抽出する
+```
+
+---
+
+# TASK-35: Add Task Candidate Extraction
+
+## Goal
+
+Create explicit executable task candidates from structured business knowledge.
+
+## Create
+
+```text
+src/domain_discovery_engine/agents/task_candidate_extractor.py
+```
+
+## Required behavior
+
+Input:
 
 ```python
-class Concept:
-    ...
+ProjectMemory or BusinessCapabilityModel
+```
+
+Output:
+
+```python
+list[ExecutableTaskCandidate]
+```
+
+## Task candidate generation rules
+
+A task candidate should be generated when the model has:
+
+- an action or task
+- required input candidates
+- expected output candidates
+- at least one rule, criterion, procedure, or constraint
+
+## Candidate task types
+
+Use one of:
+
+```text
+skill
+mcp_tool
+api
+workflow
+agent
+ui
+unknown
+```
+
+Default to:
+
+```text
+unknown
+```
+
+Do not over-classify.
+
+## Important
+
+Do NOT implement actual Skill / MCP / API generation.
+
+Only generate candidates.
+
+---
+
+# TASK-36: Update Simulation Tester
+
+## Goal
+
+SimulationTester should test business capability completeness, not only application/domain model completeness.
+
+It should check whether an executable task candidate has enough information to be implemented later.
+
+## Required checks
+
+For each executable task candidate, check:
+
+- Are required inputs defined?
+- Are expected outputs defined?
+- Are business rules defined?
+- Are decision criteria defined?
+- Are exception cases or review conditions defined?
+- Are unclear terms captured as unknowns?
+
+If information is missing, add unknowns.
+
+## Example unknowns
+
+```text
+レビュー対象とする閾値が未定義
+仕様一致の判定基準が未定義
+単位換算可能と判断する条件が未定義
 ```
 
 ---
 
-### 2. Internal prompts should be English by default
+# TASK-37: Update Question Generator
 
-The following prompts should remain English:
+## Goal
 
-- dialogue_analyzer.md
-- domain_model_builder.md
-- simulation_tester.md
+QuestionGenerator should ask clarification questions related to business capability extraction.
 
-Reason:
+It should prioritize questions that make task execution possible.
 
-These agents operate on structured concepts used in software engineering and domain modeling. English prompts are expected to be more stable for these internal tasks.
+## Question priorities
 
----
+High priority:
 
-### 3. User-facing prompts should produce Japanese
+- missing decision criteria
+- missing business rules
+- missing required inputs
+- missing expected outputs
+- missing exception handling
+- missing review condition
 
-The following prompts must explicitly instruct the LLM to produce Japanese output:
+Lower priority:
 
-- question_generator.md
-- response_composer.md, if implemented
+- UI preference
+- implementation format
+- downstream tool type
 
-The generated clarification questions must be natural Japanese.
+## User-facing language
+
+Questions must be Japanese by default.
+
+Do not mention internal terms like:
+
+- BusinessCapabilityModel
+- schema
+- executable task candidate
+- IR
 
 Bad:
 
 ```text
-Please define the similarity criteria.
+ExecutableTaskCandidateの入力を定義してください。
 ```
 
 Good:
 
 ```text
-過去の実験を探すとき、何が近いものを「似ている」と判断しますか？
-例: 試料、実験条件、測定値、目的、担当者など
+見積候補を評価する際、入力として最低限必要な情報は何ですか？
+例: 品名、仕様、単位、数量、候補カタログ、過去実績など
 ```
 
 ---
 
-### 4. User-provided domain labels must preserve original Japanese
+# TASK-38: Update Prompts
 
-If the user says:
+## Update internal prompts
+
+Move or update these prompts:
 
 ```text
-実験条件と結果を記録したい
+prompts/internal/dialogue_analyzer.md
+prompts/internal/domain_model_builder.md
+prompts/internal/simulation_tester.md
 ```
 
-The extracted concepts should preserve Japanese labels:
-
-```json
-{
-  "concepts": [
-    {
-      "label": "実験条件"
-    },
-    {
-      "label": "実験結果"
-    }
-  ]
-}
-```
-
-Do not translate domain labels to English unless explicitly requested.
-
-Bad:
-
-```json
-{
-  "label": "experiment condition"
-}
-```
-
-Good:
-
-```json
-{
-  "label": "実験条件"
-}
-```
-
----
-
-## TASK-25: Add Prompt Language Policy Document
-
-### Create
+Add or update:
 
 ```text
-docs/prompt_language_policy.md
+prompts/internal/business_capability_builder.md
+prompts/internal/task_candidate_extractor.md
 ```
 
-### Content requirements
+Internal prompts should be English.
 
-Document the following:
+They must state:
 
-- Internal prompts are English by default
-- User-facing outputs are Japanese by default
-- Schema names remain English
-- Domain labels from user input must preserve original language
-- Japanese users are the primary target users
-- Future multilingual support should be handled via configuration, not by changing schemas
+- Preserve Japanese user-provided labels
+- Extract business rules
+- Extract decision criteria
+- Extract procedures
+- Extract input/output information
+- Extract executable task candidates
+- Do not generate downstream artifacts yet
 
----
+## Update user-facing prompts
 
-## TASK-26: Reorganize Prompt Directory
-
-### Goal
-
-Make prompt language separation explicit.
-
-### Required structure
+Update:
 
 ```text
-prompts/
-  internal/
-    dialogue_analyzer.md
-    domain_model_builder.md
-    simulation_tester.md
-
-  user_facing/
-    question_generator.md
-    response_composer.md
+prompts/user_facing/question_generator.md
 ```
 
-If `response_composer.md` is not implemented yet, create it as a placeholder prompt.
-
-### Requirements
-
-- Update prompt loading code to use the new paths
-- Tests must pass
-- Existing LLM mode must still work
-- Rule-based mode must still work
+It must generate Japanese clarification questions that help complete executable task candidates.
 
 ---
 
-## TASK-27: Update Prompt Files
+# TASK-39: Update Workflow
 
-### dialogue_analyzer.md
+## Goal
 
-Must be written in English.
+Add business capability extraction to the existing workflow.
 
-Must explicitly instruct:
-
-- Analyze Japanese or English user input
-- Extract structured items
-- Preserve user language for labels and descriptions
-- Return JSON only
-- Do not invent confirmed facts
-- Separate inferred assumptions from user-confirmed facts
-
-### domain_model_builder.md
-
-Must be written in English.
-
-Must explicitly instruct:
-
-- Build a domain model from ProjectMemory
-- Preserve Japanese business terms
-- Do not translate user-provided labels
-- Distinguish confirmed items from candidate items
-- Keep unresolved issues visible
-
-### simulation_tester.md
-
-Must be written in English.
-
-Must explicitly instruct:
-
-- Run business scenario simulation
-- Identify missing concepts, tasks, constraints, and relations
-- Generate unknowns, not final answers
-- Preserve Japanese labels
-
-### question_generator.md
-
-Can be written in Japanese or bilingual.
-
-Must explicitly instruct:
-
-- Generate Japanese clarification questions
-- Use polite but concise Japanese
-- Ask one high-priority question at a time unless multiple are strongly related
-- Explain briefly why the question matters
-- Include concrete examples where helpful
-- Avoid technical jargon such as "Domain Model", "Entity", "IR", "Schema"
-
-### response_composer.md
-
-If implemented, must explicitly instruct:
-
-- Summarize current understanding in Japanese
-- Show confirmed items and unresolved items separately
-- Avoid exposing internal implementation details
-- Do not mention LLM, schema, JSON, or internal prompts to the business user
-
----
-
-## TASK-28: Add User Locale Configuration
-
-### Goal
-
-Make user-facing output language configurable.
-
-### Add environment variable
-
-```env
-DDE_USER_LOCALE=ja-JP
-```
-
-Default:
+## Existing workflow
 
 ```text
-ja-JP
+DialogueAnalyzer
+↓
+MemoryUpdater
+↓
+DomainModelBuilder
+↓
+SimulationTester
+↓
+QuestionGenerator
 ```
 
-### Update
+## New workflow
 
-- `.env.example`
-- AppConfig
-- README
-- Docker documentation if present
+```text
+DialogueAnalyzer
+↓
+MemoryUpdater
+↓
+DomainModelBuilder
+↓
+BusinessCapabilityBuilder
+↓
+TaskCandidateExtractor
+↓
+SimulationTester
+↓
+QuestionGenerator
+```
 
-### Behavior
+## Requirements
 
-If `DDE_USER_LOCALE=ja-JP`, clarification questions must be generated in Japanese.
-
-Future locales can be added later. Do not implement full multilingual support now.
+- Existing DomainModel output must remain available.
+- New BusinessCapabilityModel output must be available.
+- CLI should display a concise summary of executable task candidates.
+- Existing tests must still pass.
 
 ---
 
-## TASK-29: Add Tests for Japanese User Experience
+# TASK-40: Update CLI Output
 
-### Create or update tests
+## Goal
 
-Add tests that verify:
+CLI should show business capability output in addition to domain model output.
 
-1. Japanese user input remains Japanese in extracted labels
-2. QuestionGenerator returns Japanese text
-3. Internal schema fields remain English
-4. Prompt files exist in the new directory structure
-5. `DDE_USER_LOCALE` defaults to `ja-JP`
-
-### Example test input
+## Add display sections
 
 ```text
-実験条件と結果を記録して、過去の似た実験を探せるようにしたい
+Business Rules
+Decision Criteria
+Procedures
+Executable Task Candidates
+Unresolved Questions
 ```
 
-### Expected examples
+## Requirements
 
-Concept labels should include:
-
-```text
-実験条件
-実験結果
-実験
-```
-
-Question should be Japanese, for example:
-
-```text
-過去の実験を探すとき、何を基準に「似ている」と判断しますか？
-```
-
-The exact wording does not need to match, but it must be Japanese and user-facing.
+- Japanese labels must be preserved.
+- Output should be readable by Japanese business users.
+- Do not show raw JSON by default.
 
 ---
 
-## TASK-30: Update README
+# TASK-41: Add Example Scenarios
 
-Add a section:
+## Create examples
 
-```markdown
-## Prompt and Language Policy
+```text
+examples/purchasing_estimate_evaluation/
+  conversation.md
+  expected_business_capability.yaml
+
+examples/system_understanding_documentation/
+  conversation.md
+  expected_business_capability.yaml
+
+examples/data_analysis_support/
+  conversation.md
+  expected_business_capability.yaml
 ```
 
-Include:
+## Scenario 1: Purchasing Estimate Evaluation
 
-- The target user language is Japanese
-- Internal prompts use English for technical stability
-- User-facing questions and summaries are Japanese
-- User-provided business terms are preserved in their original language
-- `DDE_USER_LOCALE=ja-JP` controls user-facing language
+Must include:
+
+- judgment criteria
+- exclusion rules
+- review conditions
+- candidate matching task
+
+## Scenario 2: System Understanding / Documentation Generation
+
+Must include:
+
+- code structure understanding
+- module extraction
+- dependency explanation
+- documentation generation task
+
+## Scenario 3: Data Analysis Support
+
+Must include:
+
+- input dataset
+- analysis objective
+- preprocessing
+- visualization
+- insight generation
 
 ---
 
-## Non-goals
+# TASK-42: Add Tests
 
-Do not implement:
+## Required tests
 
+Add tests for:
+
+1. BusinessCapabilityModel schema
+2. ProjectMemory extended fields
+3. BusinessCapabilityBuilder
+4. TaskCandidateExtractor
+5. DialogueAnalyzer extraction of business rules and decision criteria
+6. SimulationTester unknown generation for incomplete executable tasks
+7. QuestionGenerator Japanese questions for missing criteria
+8. CLI displays executable task candidates
+9. Existing DomainModel behavior remains backward compatible
+
+---
+
+# TASK-43: Update README and Design Docs
+
+## README updates
+
+Update README to reflect the new positioning.
+
+Add:
+
+```text
+DomainDiscoveryEngine structures business knowledge from dialogue and turns it into executable task candidates.
+```
+
+Explain that DDE is the front-stage engine of a future business capability assetization platform.
+
+## Design docs
+
+Update or create:
+
+```text
+docs/business_capability_model.md
+docs/fy2026_direction.md
+```
+
+`docs/fy2026_direction.md` should summarize:
+
+- The target of democratization is business capability, not systems
+- Business capability consists of rules, procedures, criteria, constraints, and know-how
+- DDE handles the front-stage generic model
+- Downstream conversion to Skill/MCP/API/Workflow/Agent is out of scope for this phase
+
+---
+
+# Non-goals
+
+Do NOT implement:
+
+- Skill generation
+- MCP Tool generation
+- API generation
+- Workflow execution
+- Agent runtime
+- UI generation
 - IR generation
-- Application generation
-- Deployment engine beyond existing Docker runtime
-- Full multilingual UI
-- Translation of all internal prompts into Japanese
-- Schema renaming into Japanese
-- Database migration
-- Knowledge graph storage
-- Neo4j integration
+- Deployment of generated artifacts
+- Neo4j
+- Knowledge graph database
+- Full evaluation framework
 
 ---
 
-## Acceptance Criteria
+# Acceptance Criteria
 
 The implementation is complete when:
 
 1. All tests pass
-2. Rule-based mode still works
-3. LLM mode still works
-4. Prompt directories are separated into `internal/` and `user_facing/`
-5. Japanese user input is preserved in labels
-6. Clarification questions are generated in Japanese by default
-7. README clearly explains the language policy
-8. `.env.example` includes `DDE_USER_LOCALE=ja-JP`
-9. Docker execution still works
+2. Existing DomainModel behavior remains available
+3. BusinessCapabilityModel schema exists
+4. ProjectMemory can store rules, decision criteria, procedures, input/output specs, and executable task candidates
+5. DialogueAnalyzer can extract business capability information
+6. BusinessCapabilityBuilder can produce BusinessCapabilityModel
+7. TaskCandidateExtractor can produce ExecutableTaskCandidate objects
+8. SimulationTester can detect missing information for executable task candidates
+9. QuestionGenerator asks Japanese clarification questions related to missing business capability information
+10. CLI displays executable task candidates
+11. README reflects the revised FY2026 positioning
+12. No downstream artifact generation is implemented
 
 ---
 
-## Recommended Codex Scope
+# Recommended Codex Scope
 
-For the next Codex run, implement only:
+This is a relatively large conceptual shift.
 
-- TASK-25
-- TASK-26
-- TASK-27
-- TASK-28
-- TASK-29
-- TASK-30
+If Codex performance is unstable, split into two runs.
 
-Do not start evaluation framework work yet.
+## Run A
 
-Focus only on prompt language policy and Japanese user experience.
+Implement:
+
+- TASK-31
+- TASK-32
+- TASK-33
+- TASK-35
+- TASK-42 partial tests for schemas/builders
+
+## Run B
+
+Implement:
+
+- TASK-34
+- TASK-36
+- TASK-37
+- TASK-38
+- TASK-39
+- TASK-40
+- TASK-41
+- TASK-43
+
+If possible, Run A should be done first and committed before Run B.
