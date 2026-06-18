@@ -1,8 +1,8 @@
 # DomainDiscoveryEngine
 
-DomainDiscoveryEngine, abbreviated as `DDE`, is the upstream domain-discovery component of a future intent-driven system generation platform.
-It does not generate or deploy applications.
-Its responsibility is to converge user dialogue into a structured DomainModel.
+DomainDiscoveryEngine, abbreviated as `DDE`, is the upstream business knowledge structuring component of a future capability democratization platform.
+It does not generate or deploy downstream artifacts.
+Its responsibility is to converge user dialogue into a structured business capability model and executable task candidates.
 
 ## MVP Scope
 
@@ -10,6 +10,8 @@ Its responsibility is to converge user dialogue into a structured DomainModel.
 - Extract goals, concepts, tasks, constraints, assumptions, decisions, and unknowns
 - Maintain `ProjectMemory` as the current understanding state
 - Build a reviewable `DomainModel`
+- Build a broader `BusinessCapabilityModel`
+- Identify reusable executable task candidates
 - Detect missing information by simulation-style break tests
 - Ask one prioritized next question
 
@@ -38,12 +40,11 @@ User Dialogue
 ```text
 User Dialogue
   -> DomainDiscoveryEngine
-  -> DomainModel
-  -> Future Domain-to-IR Generator
-  -> Future Application Generator
-  -> Future Deployment Engine
+  -> Business Capability Model
+  -> Executable Task Candidates
+  -> Future Skill / MCP Tool / API / Workflow / Agent / UI Conversion
 ```
 
 ## Expected Output
 
-The expected output of DDE is a structured, reviewable `DomainModel` plus unresolved questions that help converge the domain understanding.
+The expected output of DDE is a structured, reviewable `DomainModel`, a broader `BusinessCapabilityModel`, executable task candidates, and unresolved questions that help converge the business understanding.

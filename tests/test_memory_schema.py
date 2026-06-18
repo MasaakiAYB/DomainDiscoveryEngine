@@ -37,3 +37,12 @@ def test_list_defaults_are_not_shared() -> None:
         )
     )
     assert second.goals == []
+
+
+def test_extended_memory_sections_exist() -> None:
+    memory = ProjectMemory(project_id="demo")
+    assert memory.business_rules == []
+    assert memory.decision_criteria == []
+    assert memory.procedures == []
+    assert memory.input_outputs == []
+    assert memory.executable_task_candidates == []

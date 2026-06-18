@@ -31,6 +31,42 @@ class RuleBasedQuestionGenerator:
         return QuestionSet(candidate_questions=candidates, selected_question=selected)
 
     def _question_for_unknown(self, item: MemoryItem) -> Question:
+        if "評価に必要な入力情報" in item.label:
+            return Question(
+                id=new_id("question"),
+                text="見積候補を評価する際、入力として最低限必要な情報は何ですか？",
+                reason="入力情報が決まらないと、評価作業を実行できないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["品名", "仕様", "単位", "数量", "候補カタログ", "過去実績"],
+            )
+        if "評価の判断基準" in item.label or "仕様一致の判定基準" in item.label:
+            return Question(
+                id=new_id("question"),
+                text="見積候補を評価するとき、どの条件を満たせば適合と判断しますか？",
+                reason="判断基準がないと、候補を一貫して評価できないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["仕様一致", "単位整合", "単価", "過去実績との差分"],
+            )
+        if "単位換算可能と判断する条件" in item.label:
+            return Question(
+                id=new_id("question"),
+                text="単位が異なる候補を比較するとき、どの条件なら換算して比較してよいですか？",
+                reason="単位整合の扱いが決まらないと、候補を正しく比較できないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["換算表がある場合", "同じ品種だけ換算可能な場合", "担当者確認が必要な場合"],
+            )
+        if "レビュー対象" in item.label:
+            return Question(
+                id=new_id("question"),
+                text="どのような場合にレビュー対象へ回したいですか？",
+                reason="レビュー条件がないと、自動判定と人手確認を分けられないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["金額差が大きい場合", "仕様が一部不一致の場合", "単位換算が必要な場合"],
+            )
         if "似た実験の判定基準" in item.label or "類似判定基準" in item.label:
             return Question(
                 id=new_id("question"),
@@ -69,7 +105,7 @@ class RuleBasedQuestionGenerator:
     def _priority(self, item: MemoryItem) -> QuestionPriority:
         if item.source == MemorySource.SIMULATION:
             return QuestionPriority.HIGH
-        if "条件" in item.label or "基準" in item.label:
+        if any(keyword in item.label for keyword in ("条件", "基準", "入力", "出力", "レビュー")):
             return QuestionPriority.HIGH
         return QuestionPriority.MEDIUM
 
@@ -81,7 +117,17 @@ class RuleBasedQuestionGenerator:
             QuestionPriority.MEDIUM: 1,
             QuestionPriority.LOW: 2,
         }
-        return sorted(candidates, key=lambda question: (order[question.priority], question.text))[0]
+        return sorted(candidates, key=lambda question: (order[question.priority], self._business_priority(question), question.text))[0]
+
+    def _business_priority(self, question: Question) -> int:
+        text = question.text
+        if "入力として最低限必要な情報" in text:
+            return 0
+        if "適合と判断" in text or "換算して比較" in text:
+            return 1
+        if "レビュー対象" in text:
+            return 2
+        return 3
 
 
 class LLMQuestionGenerator:
@@ -107,6 +153,7 @@ class LLMQuestionGenerator:
             "Return JSON only matching the QuestionSet schema.\n"
             f"Generate the selected question in the user locale `{self.config.user_locale}`.\n"
             "The selected question must be business-friendly and explain why the information is needed.\n"
+            "Prioritize missing decision criteria, business rules, required inputs, expected outputs, and review conditions.\n"
             f"Project memory:\n{memory.model_dump_json(indent=2)}\n"
             f"Domain model:\n{domain_model.model_dump_json(indent=2)}\n"
             f"Simulation result:\n{simulation_json}\n"

@@ -58,7 +58,36 @@ class RuleBasedSimulationTester:
                     result.unknowns.append(self._unknown("予約に必要な入力項目", task_name))
                     known_texts.add("予約に必要な入力項目")
 
+        for candidate in memory.executable_task_candidates:
+            self._check_task_candidate(candidate.label, memory, result)
+
         return result
+
+    def _check_task_candidate(self, label: str, memory: ProjectMemory, result: SimulationResult) -> None:
+        if "評価" in label:
+            if not memory.input_outputs:
+                result.findings.append(self._finding("candidate-input", label, "評価に必要な入力情報が未定義"))
+                result.unknowns.append(self._unknown("評価に必要な入力情報が未定義", label))
+            if not memory.decision_criteria:
+                result.findings.append(self._finding("candidate-criteria", label, "評価の判断基準が未定義"))
+                result.unknowns.append(self._unknown("評価の判断基準が未定義", label))
+            if not memory.business_rules:
+                result.findings.append(self._finding("candidate-rules", label, "評価時の業務ルールが未定義"))
+                result.unknowns.append(self._unknown("評価時の業務ルールが未定義", label))
+        if "レビュー対象" in label and not any("レビュー" in item.label or "閾値" in item.label for item in memory.business_rules + memory.unknowns):
+            result.findings.append(self._finding("review-threshold", label, "レビュー対象とする閾値が未定義"))
+            result.unknowns.append(self._unknown("レビュー対象とする閾値が未定義", label))
+
+        if any(item.label == "仕様一致" for item in memory.decision_criteria) and not any(
+            "仕様一致" in item.label for item in memory.unknowns
+        ):
+            result.findings.append(self._finding("spec-match", label, "仕様一致の判定基準が未定義"))
+            result.unknowns.append(self._unknown("仕様一致の判定基準が未定義", label))
+        if any(item.label == "単位整合" for item in memory.decision_criteria) and not any(
+            "単位換算可能" in item.label or "単位整合" in item.label for item in memory.unknowns
+        ):
+            result.findings.append(self._finding("unit-match", label, "単位換算可能と判断する条件が未定義"))
+            result.unknowns.append(self._unknown("単位換算可能と判断する条件が未定義", label))
 
     def _contains_any(self, texts: set[str], keywords: tuple[str, ...]) -> bool:
         return any(keyword in text for text in texts for keyword in keywords)
@@ -100,6 +129,7 @@ class LLMSimulationTester:
         user_prompt = (
             "Return JSON only matching the SimulationResult schema.\n"
             "Use finding_type values such as missing_info, contradiction, risk.\n"
+            "Test business capability completeness for executable task candidates as well.\n"
             f"Domain model:\n{domain_model.model_dump_json(indent=2)}\n"
             f"Project memory:\n{memory.model_dump_json(indent=2)}\n"
         )

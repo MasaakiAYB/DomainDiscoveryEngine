@@ -1,14 +1,16 @@
 # DomainDiscoveryEngine
 
-DomainDiscoveryEngine converts user dialogue into a structured domain model by extracting goals, concepts, tasks, relations, constraints, assumptions, decisions, and unknowns.
+DomainDiscoveryEngine structures business knowledge from dialogue and converts it into business capability models and executable task candidates.
 
-This project does not generate source code, deploy applications, or produce System IR. Those are future downstream components.
+This project does not generate source code, deploy applications, or produce System IR. Downstream forms such as Skills, MCP Tools, APIs, Workflows, Agents, and UIs are future components.
 
 ## MVP Scope
 
 - Dialogue analysis
 - Structured memory management
 - Domain model construction
+- Business capability model construction
+- Executable task candidate extraction
 - Simulation-based missing-information detection
 - Follow-up question generation
 - CLI-based workflow

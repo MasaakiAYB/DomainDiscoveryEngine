@@ -39,6 +39,7 @@ def main() -> None:
 
 def _print_state(state) -> None:
     domain_model = state.domain_model
+    task_candidates = state.executable_task_candidates or []
     question = state.question_set.selected_question if state.question_set else None
     print("\nCurrent purpose:")
     for purpose in domain_model.purpose:
@@ -52,6 +53,9 @@ def _print_state(state) -> None:
     print("\nUnresolved questions:")
     for unknown in domain_model.unresolved_questions:
         print(f"- {unknown}")
+    print("\nExecutable task candidates:")
+    for candidate in task_candidates:
+        print(f"- {candidate.label} ({candidate.task_type})")
     print("\nNext question:")
     if question is None:
         print("- None")

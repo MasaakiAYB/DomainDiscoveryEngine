@@ -100,6 +100,60 @@ class RuleBasedDialogueAnalyzer:
                 )
             )
 
+        if "評価" in stripped and "見積" in stripped:
+            extraction.tasks.append(
+                self._item(MemoryItemType.TASK, "見積候補を評価する", MemorySource.USER, stripped)
+            )
+            extraction.executable_task_candidates.append(
+                self._item(
+                    MemoryItemType.EXECUTABLE_TASK_CANDIDATE,
+                    "見積候補を評価する",
+                    MemorySource.AI_INFERRED,
+                    stripped,
+                    description="task_type:unknown",
+                )
+            )
+        if "レビュー対象" in stripped:
+            extraction.executable_task_candidates.append(
+                self._item(
+                    MemoryItemType.EXECUTABLE_TASK_CANDIDATE,
+                    "レビュー対象を抽出する",
+                    MemorySource.AI_INFERRED,
+                    stripped,
+                    description="task_type:unknown",
+                )
+            )
+            extraction.business_rules.append(
+                self._item(
+                    MemoryItemType.BUSINESS_RULE,
+                    "判断が難しいものはレビュー対象にする",
+                    MemorySource.USER,
+                    stripped,
+                    description="rule_type:exception",
+                )
+            )
+        if "対象外" in stripped and "除外" in stripped:
+            extraction.business_rules.append(
+                self._item(
+                    MemoryItemType.BUSINESS_RULE,
+                    "対象外候補は除外する",
+                    MemorySource.USER,
+                    stripped,
+                    description="rule_type:eligibility",
+                )
+            )
+        for criterion in ("仕様一致", "単位整合", "過去実績との差分", "単価"):
+            if criterion in stripped:
+                extraction.decision_criteria.append(
+                    self._item(
+                        MemoryItemType.DECISION_CRITERION,
+                        criterion,
+                        MemorySource.USER,
+                        stripped,
+                        description="criterion_type:evaluation",
+                    )
+                )
+
         return extraction
 
     def _item(
@@ -138,6 +192,7 @@ class LLMDialogueAnalyzer:
         user_prompt = (
             "Return JSON only.\n"
             "Schema keys: goals, concepts, tasks, constraints, assumptions, unknowns.\n"
+            "Additional schema keys: business_rules, decision_criteria, procedures, input_outputs, executable_task_candidates.\n"
             "Each item may include label, description, source, status, confidence, evidence.\n"
             f"Current memory:\n{memory.model_dump_json(indent=2)}\n"
             f"User message:\n{message}\n"
@@ -155,6 +210,23 @@ class LLMDialogueAnalyzer:
                 ),
                 assumptions=self._build_items(
                     payload.get("assumptions", []), MemoryItemType.ASSUMPTION, message
+                ),
+                business_rules=self._build_items(
+                    payload.get("business_rules", []), MemoryItemType.BUSINESS_RULE, message
+                ),
+                decision_criteria=self._build_items(
+                    payload.get("decision_criteria", []), MemoryItemType.DECISION_CRITERION, message
+                ),
+                procedures=self._build_items(
+                    payload.get("procedures", []), MemoryItemType.PROCEDURE, message
+                ),
+                input_outputs=self._build_items(
+                    payload.get("input_outputs", []), MemoryItemType.INPUT_OUTPUT, message
+                ),
+                executable_task_candidates=self._build_items(
+                    payload.get("executable_task_candidates", []),
+                    MemoryItemType.EXECUTABLE_TASK_CANDIDATE,
+                    message,
                 ),
                 unknowns=self._build_items(payload.get("unknowns", []), MemoryItemType.UNKNOWN, message),
             )
