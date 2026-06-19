@@ -100,20 +100,19 @@ class DiscoveryWorkflow:
     def _candidate_to_memory_item(self, candidate):
         from domain_discovery_engine.schemas.memory import MemoryItem, MemoryItemType
 
-        description_parts = [candidate.description]
-        description_parts.append(f"task_type:{candidate.task_type}")
-        description_parts.append(f"required_inputs:{'|'.join(candidate.required_inputs)}")
-        description_parts.append(f"expected_outputs:{'|'.join(candidate.expected_outputs)}")
-        description_parts.append(f"required_rules:{'|'.join(candidate.required_rules)}")
-        description_parts.append(
-            f"required_decision_criteria:{'|'.join(candidate.required_decision_criteria)}"
-        )
-        description_parts.append(f"required_procedures:{'|'.join(candidate.required_procedures)}")
         return MemoryItem(
             id=candidate.id,
             type=MemoryItemType.EXECUTABLE_TASK_CANDIDATE,
             label=candidate.label,
-            description="\n".join(part for part in description_parts if part),
+            description=candidate.description,
+            metadata={
+                "task_type": candidate.task_type,
+                "required_inputs": candidate.required_inputs,
+                "expected_outputs": candidate.expected_outputs,
+                "required_rules": candidate.required_rules,
+                "required_decision_criteria": candidate.required_decision_criteria,
+                "required_procedures": candidate.required_procedures,
+            },
             status=candidate.status,
             confidence=candidate.confidence,
             source=candidate.source,

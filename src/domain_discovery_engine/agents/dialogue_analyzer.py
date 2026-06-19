@@ -110,7 +110,7 @@ class RuleBasedDialogueAnalyzer:
                     "見積候補を評価する",
                     MemorySource.AI_INFERRED,
                     stripped,
-                    description="task_type:unknown",
+                    metadata={"task_type": "unknown"},
                 )
             )
         if "レビュー対象" in stripped:
@@ -120,7 +120,7 @@ class RuleBasedDialogueAnalyzer:
                     "レビュー対象を抽出する",
                     MemorySource.AI_INFERRED,
                     stripped,
-                    description="task_type:unknown",
+                    metadata={"task_type": "unknown"},
                 )
             )
             extraction.business_rules.append(
@@ -129,7 +129,7 @@ class RuleBasedDialogueAnalyzer:
                     "判断が難しいものはレビュー対象にする",
                     MemorySource.USER,
                     stripped,
-                    description="rule_type:exception",
+                    metadata={"rule_type": "exception"},
                 )
             )
         if "対象外" in stripped and "除外" in stripped:
@@ -139,7 +139,7 @@ class RuleBasedDialogueAnalyzer:
                     "対象外候補は除外する",
                     MemorySource.USER,
                     stripped,
-                    description="rule_type:eligibility",
+                    metadata={"rule_type": "eligibility"},
                 )
             )
         for criterion in ("仕様一致", "単位整合", "過去実績との差分", "単価"):
@@ -150,7 +150,7 @@ class RuleBasedDialogueAnalyzer:
                         criterion,
                         MemorySource.USER,
                         stripped,
-                        description="criterion_type:evaluation",
+                        metadata={"criterion_type": "evaluation"},
                     )
                 )
 
@@ -165,12 +165,14 @@ class RuleBasedDialogueAnalyzer:
         *,
         status: MemoryStatus = MemoryStatus.CANDIDATE,
         description: str = "",
+        metadata: dict | None = None,
     ) -> MemoryItem:
         return MemoryItem(
             id=new_id(item_type.value),
             type=item_type,
             label=label,
             description=description,
+            metadata=metadata or {},
             status=status,
             confidence=0.8 if source == MemorySource.USER else 0.6,
             source=source,

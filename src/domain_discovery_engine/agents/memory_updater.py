@@ -27,6 +27,7 @@ class MemoryUpdater:
             existing.description = existing.description or item.description
             existing.evidence = self._merge_text(existing.evidence, item.evidence)
             existing.confidence = max(existing.confidence, item.confidence)
+            existing.metadata = {**existing.metadata, **item.metadata}
             existing.related_item_ids = self._merge_related_ids(existing, item)
             existing.status = self._select_status(existing.status, item.status)
             existing.source = self._select_source(existing.source, item.source)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -41,6 +42,7 @@ class MemoryItem(BaseModel):
     type: MemoryItemType
     label: str
     description: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
     status: MemoryStatus = MemoryStatus.CANDIDATE
     confidence: float = Field(ge=0.0, le=1.0)
     source: MemorySource

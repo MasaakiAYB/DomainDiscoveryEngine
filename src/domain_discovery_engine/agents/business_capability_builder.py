@@ -42,7 +42,7 @@ class RuleBasedBusinessCapabilityBuilder:
             id=item.id,
             label=item.label,
             description=item.description,
-            rule_type=self._meta_value(item.description, "rule_type", "validation"),
+            rule_type=self._metadata_value(item, "rule_type", "validation"),
             status=item.status,
             source=item.source,
             evidence=item.evidence or None,
@@ -54,7 +54,7 @@ class RuleBasedBusinessCapabilityBuilder:
             id=item.id,
             label=item.label,
             description=item.description,
-            criterion_type=self._meta_value(item.description, "criterion_type", "evaluation"),
+            criterion_type=self._metadata_value(item, "criterion_type", "evaluation"),
             status=item.status,
             source=item.source,
             evidence=item.evidence or None,
@@ -66,7 +66,7 @@ class RuleBasedBusinessCapabilityBuilder:
             id=item.id,
             label=item.label,
             description=item.description,
-            steps=self._list_meta_value(item.description, "steps"),
+            steps=self._list_metadata_value(item, "steps"),
             status=item.status,
             source=item.source,
             evidence=item.evidence or None,
@@ -78,8 +78,8 @@ class RuleBasedBusinessCapabilityBuilder:
             id=item.id,
             label=item.label,
             description=item.description,
-            input_items=self._list_meta_value(item.description, "inputs"),
-            output_items=self._list_meta_value(item.description, "outputs"),
+            input_items=self._list_metadata_value(item, "input_items", fallback_key="inputs"),
+            output_items=self._list_metadata_value(item, "output_items", fallback_key="outputs"),
             status=item.status,
             source=item.source,
             evidence=item.evidence or None,
@@ -91,27 +91,46 @@ class RuleBasedBusinessCapabilityBuilder:
             id=item.id,
             label=item.label,
             description=item.description,
-            task_type=self._meta_value(item.description, "task_type", "unknown"),
-            required_inputs=self._list_meta_value(item.description, "required_inputs"),
-            expected_outputs=self._list_meta_value(item.description, "expected_outputs"),
-            required_rules=self._list_meta_value(item.description, "required_rules"),
-            required_decision_criteria=self._list_meta_value(item.description, "required_decision_criteria"),
-            required_procedures=self._list_meta_value(item.description, "required_procedures"),
+            task_type=self._metadata_value(item, "task_type", "unknown"),
+            required_inputs=self._list_metadata_value(item, "required_inputs"),
+            expected_outputs=self._list_metadata_value(item, "expected_outputs"),
+            required_rules=self._list_metadata_value(item, "required_rules"),
+            required_decision_criteria=self._list_metadata_value(item, "required_decision_criteria"),
+            required_procedures=self._list_metadata_value(item, "required_procedures"),
             status=item.status,
             source=item.source,
             evidence=item.evidence or None,
             confidence=item.confidence,
         )
 
-    def _meta_value(self, description: str, key: str, default: str) -> str:
+    def _metadata_value(self, item: MemoryItem, key: str, default: str) -> str:
+        value = item.metadata.get(key)
+        if isinstance(value, str) and value:
+            return value
+        if value is not None and not isinstance(value, (list, dict)):
+            return str(value)
+        return self._description_value(item.description, key, default)
+
+    def _description_value(self, description: str, key: str, default: str) -> str:
         prefix = f"{key}:"
         for line in description.splitlines():
             if line.startswith(prefix):
                 return line[len(prefix) :].strip() or default
         return default
 
-    def _list_meta_value(self, description: str, key: str) -> list[str]:
-        raw = self._meta_value(description, key, "")
+    def _list_metadata_value(
+        self,
+        item: MemoryItem,
+        key: str,
+        *,
+        fallback_key: str | None = None,
+    ) -> list[str]:
+        value = item.metadata.get(key)
+        if isinstance(value, list):
+            return [str(part) for part in value if str(part).strip()]
+        if isinstance(value, str) and value:
+            return [part.strip() for part in value.split("|") if part.strip()]
+        raw = self._description_value(item.description, fallback_key or key, "")
         if not raw:
             return []
         return [part.strip() for part in raw.split("|") if part.strip()]

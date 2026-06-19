@@ -46,3 +46,14 @@ def test_extended_memory_sections_exist() -> None:
     assert memory.procedures == []
     assert memory.input_outputs == []
     assert memory.executable_task_candidates == []
+
+
+def test_memory_item_metadata_defaults_to_empty_dict() -> None:
+    item = MemoryItem(
+        id="m1",
+        type=MemoryItemType.CONCEPT,
+        label="実験",
+        confidence=0.5,
+        source=MemorySource.USER,
+    )
+    assert item.metadata == {}
