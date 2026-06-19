@@ -4,6 +4,14 @@ DomainDiscoveryEngine structures business knowledge from dialogue and converts i
 
 This project does not generate source code, deploy applications, or produce System IR. Downstream forms such as Skills, MCP Tools, APIs, Workflows, Agents, and UIs are future components.
 
+## 日本語概要
+
+DomainDiscoveryEngineは、対話から業務知識を構造化するエンジンです。
+
+このプロジェクトでは、業務ルール（BusinessRule）、判断基準（DecisionCriterion）、業務手順（BusinessProcedure）、入出力仕様（InputOutputSpec）、実行可能タスク候補（ExecutableTaskCandidate）を整理し、業務能力モデル（BusinessCapabilityModel）として扱います。
+
+Skill / MCP Tool / API / Workflow / Agent への変換は将来の downstream であり、このフェーズの対象外です。
+
 ## MVP Scope
 
 - Dialogue analysis
@@ -72,3 +80,5 @@ Set `DDE_ANALYZER_MODE=rule_based` or `DDE_ANALYZER_MODE=llm` to switch between 
 - Detailed design overview: [design/README.md](design/README.md)
 - Runtime guide: [design/runtime.md](design/runtime.md)
 - Architecture notes: [design/architecture.md](design/architecture.md)
+- Project direction: [docs/project_direction.md](docs/project_direction.md)
+- Business capability model: [docs/business_capability_model.md](docs/business_capability_model.md)
