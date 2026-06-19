@@ -31,6 +31,51 @@ class RuleBasedQuestionGenerator:
         return QuestionSet(candidate_questions=candidates, selected_question=selected)
 
     def _question_for_unknown(self, item: MemoryItem) -> Question:
+        if item.label == "判断基準が未定義":
+            return Question(
+                id=new_id("question"),
+                text="この業務を進めるとき、何を基準に判断しますか？",
+                reason="判断基準がないと、結果を一貫して決められないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["仕様一致", "単位整合", "価格差", "過去実績との差分"],
+            )
+        if item.label == "業務ルールが未定義":
+            return Question(
+                id=new_id("question"),
+                text="この業務で必ず守るルールは何ですか？",
+                reason="守るべきルールが決まらないと、処理条件を固定できないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["対象外候補は除外する", "条件を満たさない場合はレビューする"],
+            )
+        if item.label == "入力情報が未定義":
+            return Question(
+                id=new_id("question"),
+                text="見積候補を評価するとき、どの情報を必ず入力として使いますか？",
+                reason="入力情報が揃わないと、評価作業を始められないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["品名", "仕様", "単位", "数量", "候補カタログ", "過去実績"],
+            )
+        if item.label == "出力情報が未定義":
+            return Question(
+                id=new_id("question"),
+                text="評価した結果として、何を出力したいですか？",
+                reason="出力結果が決まらないと、業務の完了条件を定められないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["評価結果", "採用候補", "レビュー対象一覧"],
+            )
+        if item.label == "レビュー条件が未定義":
+            return Question(
+                id=new_id("question"),
+                text="どのような場合に人がレビューする必要がありますか？",
+                reason="レビュー条件がないと、自動処理と人手確認を分けられないためです。",
+                priority=QuestionPriority.HIGH,
+                target_unknown_ids=[item.id],
+                examples=["仕様が一部不一致", "価格差が大きい", "単位換算が必要"],
+            )
         if "評価に必要な入力情報" in item.label:
             return Question(
                 id=new_id("question"),
@@ -121,12 +166,18 @@ class RuleBasedQuestionGenerator:
 
     def _business_priority(self, question: Question) -> int:
         text = question.text
-        if "入力として最低限必要な情報" in text:
+        if "何を基準に判断" in text or "適合と判断" in text:
             return 0
-        if "適合と判断" in text or "換算して比較" in text:
+        if "必ず守るルール" in text:
             return 1
-        if "レビュー対象" in text:
+        if "必ず入力として使いますか" in text or "入力として最低限必要な情報" in text:
             return 2
+        if "何を出力したいですか" in text:
+            return 3
+        if "レビュー" in text:
+            return 4
+        if "換算して比較" in text:
+            return 5
         return 3
 
 

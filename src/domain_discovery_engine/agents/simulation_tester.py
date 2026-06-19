@@ -59,35 +59,62 @@ class RuleBasedSimulationTester:
                     known_texts.add("予約に必要な入力項目")
 
         for candidate in memory.executable_task_candidates:
-            self._check_task_candidate(candidate.label, memory, result)
+            self._check_task_candidate(candidate, memory, result)
 
         return result
 
-    def _check_task_candidate(self, label: str, memory: ProjectMemory, result: SimulationResult) -> None:
-        if "評価" in label:
-            if not memory.input_outputs:
-                result.findings.append(self._finding("candidate-input", label, "評価に必要な入力情報が未定義"))
-                result.unknowns.append(self._unknown("評価に必要な入力情報が未定義", label))
-            if not memory.decision_criteria:
-                result.findings.append(self._finding("candidate-criteria", label, "評価の判断基準が未定義"))
-                result.unknowns.append(self._unknown("評価の判断基準が未定義", label))
-            if not memory.business_rules:
-                result.findings.append(self._finding("candidate-rules", label, "評価時の業務ルールが未定義"))
-                result.unknowns.append(self._unknown("評価時の業務ルールが未定義", label))
-        if "レビュー対象" in label and not any("レビュー" in item.label or "閾値" in item.label for item in memory.business_rules + memory.unknowns):
-            result.findings.append(self._finding("review-threshold", label, "レビュー対象とする閾値が未定義"))
-            result.unknowns.append(self._unknown("レビュー対象とする閾値が未定義", label))
+    def _check_task_candidate(self, candidate: MemoryItem, memory: ProjectMemory, result: SimulationResult) -> None:
+        label = candidate.label
+        metadata = candidate.metadata
+        required_inputs = self._metadata_list(metadata, "required_inputs")
+        expected_outputs = self._metadata_list(metadata, "expected_outputs")
+        required_rules = self._metadata_list(metadata, "required_rules")
+        required_decision_criteria = self._metadata_list(metadata, "required_decision_criteria")
+        required_procedures = self._metadata_list(metadata, "required_procedures")
 
-        if any(item.label == "仕様一致" for item in memory.decision_criteria) and not any(
-            "仕様一致" in item.label for item in memory.unknowns
-        ):
-            result.findings.append(self._finding("spec-match", label, "仕様一致の判定基準が未定義"))
-            result.unknowns.append(self._unknown("仕様一致の判定基準が未定義", label))
-        if any(item.label == "単位整合" for item in memory.decision_criteria) and not any(
-            "単位換算可能" in item.label or "単位整合" in item.label for item in memory.unknowns
-        ):
-            result.findings.append(self._finding("unit-match", label, "単位換算可能と判断する条件が未定義"))
-            result.unknowns.append(self._unknown("単位換算可能と判断する条件が未定義", label))
+        if not required_inputs:
+            result.findings.append(self._finding("candidate-input", label, "入力情報が未定義"))
+            result.unknowns.append(self._unknown("入力情報が未定義", label))
+        if not expected_outputs:
+            result.findings.append(self._finding("candidate-output", label, "出力情報が未定義"))
+            result.unknowns.append(self._unknown("出力情報が未定義", label))
+        if not required_rules:
+            result.findings.append(self._finding("candidate-rules", label, "業務ルールが未定義"))
+            result.unknowns.append(self._unknown("業務ルールが未定義", label))
+        if not required_decision_criteria:
+            result.findings.append(self._finding("candidate-criteria", label, "判断基準が未定義"))
+            result.unknowns.append(self._unknown("判断基準が未定義", label))
+        if any(keyword in label for keyword in ("レビュー", "判断", "評価")) and not self._has_review_condition(memory, candidate):
+            result.findings.append(self._finding("candidate-review", label, "レビュー条件が未定義"))
+            result.unknowns.append(self._unknown("レビュー条件が未定義", label))
+
+        if "評価" in label:
+            if any(item.label == "仕様一致" for item in memory.decision_criteria) and not any(
+                "仕様一致" in item.label for item in memory.unknowns
+            ):
+                result.findings.append(self._finding("spec-match", label, "仕様一致の判定基準が未定義"))
+                result.unknowns.append(self._unknown("仕様一致の判定基準が未定義", label))
+            if any(item.label == "単位整合" for item in memory.decision_criteria) and not any(
+                "単位換算可能" in item.label or "単位整合" in item.label for item in memory.unknowns
+            ):
+                result.findings.append(self._finding("unit-match", label, "単位換算可能と判断する条件が未定義"))
+                result.unknowns.append(self._unknown("単位換算可能と判断する条件が未定義", label))
+
+    def _metadata_list(self, metadata: dict, key: str) -> list[str]:
+        value = metadata.get(key, [])
+        if isinstance(value, list):
+            return [str(item) for item in value if str(item).strip()]
+        if isinstance(value, str) and value:
+            return [part.strip() for part in value.split("|") if part.strip()]
+        return []
+
+    def _has_review_condition(self, memory: ProjectMemory, candidate: MemoryItem) -> bool:
+        review_texts = [
+            *[item.label for item in memory.business_rules],
+            *[item.label for item in memory.unknowns],
+            candidate.description,
+        ]
+        return any("レビュー" in text or "閾値" in text or "例外" in text for text in review_texts if text)
 
     def _contains_any(self, texts: set[str], keywords: tuple[str, ...]) -> bool:
         return any(keyword in text for text in texts for keyword in keywords)

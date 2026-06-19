@@ -71,3 +71,30 @@ def test_selected_question_references_target_unknown_ids() -> None:
     )
     assert question_set.selected_question is not None
     assert question_set.selected_question.target_unknown_ids == ["u1"]
+
+
+def test_question_generator_prioritizes_business_capability_gaps() -> None:
+    memory = ProjectMemory(
+        project_id="demo",
+        unknowns=[
+            MemoryItem(
+                id="u1",
+                type=MemoryItemType.UNKNOWN,
+                label="入力情報が未定義",
+                status=MemoryStatus.UNRESOLVED,
+                confidence=0.8,
+                source=MemorySource.SIMULATION,
+            ),
+            MemoryItem(
+                id="u2",
+                type=MemoryItemType.UNKNOWN,
+                label="判断基準が未定義",
+                status=MemoryStatus.UNRESOLVED,
+                confidence=0.8,
+                source=MemorySource.SIMULATION,
+            ),
+        ],
+    )
+    question_set = QuestionGenerator().generate(memory, DomainModel(project_id="demo"))
+    assert question_set.selected_question is not None
+    assert "何を基準に判断しますか" in question_set.selected_question.text

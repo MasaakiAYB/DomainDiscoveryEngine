@@ -1,5 +1,9 @@
 from domain_discovery_engine.agents.business_capability_builder import RuleBasedBusinessCapabilityBuilder
-from domain_discovery_engine.agents.task_candidate_extractor import RuleBasedTaskCandidateExtractor
+from domain_discovery_engine.agents.task_candidate_extractor import (
+    LLMTaskCandidateExtractor,
+    RuleBasedTaskCandidateExtractor,
+)
+from domain_discovery_engine.schemas.business_capability import BusinessCapabilityModel, BusinessRule, DecisionCriterion
 from domain_discovery_engine.schemas.memory import MemoryItem, MemoryItemType, MemorySource, ProjectMemory
 
 
@@ -55,6 +59,7 @@ def test_task_candidate_extractor_generates_candidates() -> None:
     )
     candidates = RuleBasedTaskCandidateExtractor().extract(memory)
     assert any(candidate.label == "見積候補を評価する" for candidate in candidates)
+    assert candidates[0].required_rules == ["r1"]
 
 
 def test_business_capability_builder_prefers_metadata_over_description() -> None:
@@ -120,3 +125,71 @@ def test_new_task_candidate_data_does_not_require_description_parsing() -> None:
     candidate = model.executable_task_candidates[0]
     assert candidate.required_inputs == ["品名", "仕様"]
     assert candidate.required_rules == ["r1"]
+
+
+def test_unrelated_rules_are_not_attached_to_unrelated_task_candidates() -> None:
+    model = BusinessCapabilityModel(
+        tasks=[],
+        rules=[
+            BusinessRule(
+                id="r1",
+                label="対象外候補は除外する",
+                rule_type="eligibility",
+                status="candidate",
+                source="user",
+                confidence=0.8,
+            ),
+            BusinessRule(
+                id="r2",
+                label="設備は同じ時間帯に重複予約できない",
+                rule_type="validation",
+                status="candidate",
+                source="user",
+                confidence=0.8,
+            ),
+        ],
+        decision_criteria=[
+            DecisionCriterion(
+                id="d1",
+                label="仕様一致",
+                criterion_type="evaluation",
+                status="candidate",
+                source="user",
+                confidence=0.8,
+            )
+        ],
+        executable_task_candidates=[
+            {
+                "id": "x1",
+                "label": "見積候補を評価する",
+                "description": "候補を評価する",
+                "task_type": "unknown",
+                "required_inputs": [],
+                "expected_outputs": [],
+                "required_rules": [],
+                "required_decision_criteria": [],
+                "required_procedures": [],
+                "status": "candidate",
+                "source": "ai_inferred",
+                "confidence": 0.6,
+            }
+        ],
+    )
+    candidates = RuleBasedTaskCandidateExtractor().extract(model)
+    candidate = candidates[0]
+    assert "r1" in candidate.required_rules
+    assert "r2" not in candidate.required_rules
+
+
+def test_llm_task_candidate_extractor_accepts_items_wrapper() -> None:
+    class StubProvider:
+        def invoke(self, system_prompt: str, user_prompt: str) -> str:
+            return (
+                '{"items":[{"id":"x1","label":"見積候補を評価する","description":"候補を評価する",'
+                '"task_type":"unknown","required_inputs":["見積明細"],"expected_outputs":["評価結果"],'
+                '"required_rules":[],"required_decision_criteria":[],"required_procedures":[],'
+                '"status":"candidate","source":"ai_inferred","confidence":0.6}]}'
+            )
+
+    candidates = LLMTaskCandidateExtractor(provider=StubProvider()).extract(ProjectMemory(project_id="demo"))
+    assert candidates[0].label == "見積候補を評価する"
